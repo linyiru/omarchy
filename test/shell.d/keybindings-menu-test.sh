@@ -232,3 +232,37 @@ keybindings >/dev/null
 grep -qP '→ Terminal\texec\tomarchy-launch-terminal$' "$tmpdir"/cache/omarchy/keybindings-*.records ||
   fail "picking the terminal bind from the menu launches a terminal" "$(cat "$tmpdir"/cache/omarchy/keybindings-*.records)"
 pass "picking the terminal bind from the menu launches a terminal"
+
+# Most rows tie on both sort keys, so a whole-line comparison decides where they
+# land, and that comparison follows the collation. These two tie, and they swap:
+# a C collation puts every SUPER + <key> row ahead of the SUPER ALT rows because
+# + sorts below A, while en_US ignores the spaces and the + and reads them as
+# SUPERSLASH against SUPERALTSLASH. One cheatsheet order per install is the
+# point, so the same binds have to render the same way under either collation.
+stub_hyprctl <<BINDS
+$(lua_bind 64 "SUPER + SLASH" "Monitor scaling up")
+$(lua_bind 72 "SUPER ALT + SLASH" "Monitor scaling down")
+BINDS
+
+keybindings_under() {
+  rm -rf "$tmpdir/cache"
+  env -i PATH="$stub_bin:$ROOT/bin:$PATH" HOME="$home" \
+    XDG_CACHE_HOME="$tmpdir/cache" OMARCHY_PATH="$ROOT" LC_ALL="$1" \
+    bash "$ROOT/bin/omarchy-menu-keybindings" --print
+}
+
+if locale -a 2>/dev/null | grep -qix 'en_US.utf8'; then
+  [[ $(keybindings_under C) == $(keybindings_under en_US.UTF-8) ]] ||
+    fail "the row order does not follow the collation" \
+      "$(diff <(keybindings_under C) <(keybindings_under en_US.UTF-8))"
+  pass "the row order does not follow the collation"
+else
+  # With no second collation generated, sort falls back to comparing bytes and
+  # the check above cannot fail, which would leave it reading as proof.
+  skip "the row order does not follow the collation (no en_US.UTF-8 locale)"
+fi
+
+# Since that check needs a locale not every box has, pin the mechanism too.
+grep -qF 'LC_ALL=C sort -k1,1n -k2,2' "$ROOT/bin/omarchy-menu-keybindings" ||
+  fail "the sort that orders the rows names the collation it wants"
+pass "the sort that orders the rows names the collation it wants"
