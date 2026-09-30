@@ -236,12 +236,33 @@ pass "picking the terminal bind from the menu launches a terminal"
 
 # The id decides what pairs up and what sorts where, and then it comes off: a
 # cached record is the three fields the menu has always read. Nothing here writes
-# an arg with a tab in it, so every record is exactly three fields wide, and a
-# cache written before ids existed is still the right shape to read back.
+# an arg with a tab in it, so every record is exactly three fields wide. The shape
+# is the only thing an older cache still gets right, though, which is what the
+# assertion below is about.
 [[ $(awk -F '\t' '{ print NF }' "$tmpdir"/cache/omarchy/keybindings-*.records | sort -u) == "3" ]] ||
   fail "a cached record carries display text, dispatcher, and arg, and no id" \
     "$(cat "$tmpdir"/cache/omarchy/keybindings-*.records)"
 pass "a cached record carries display text, dispatcher, and arg, and no id"
+
+# Rows are paired and sorted before they are cached, and the key holds nothing
+# that says how. So a cache an earlier version wrote reads back in that version's
+# order on a machine whose keymap and binds have not moved, and the version in the
+# key is the only thing that retires it. Plant a record under the key the version
+# before this one would have written: it has to be ignored rather than served.
+rm -f "$tmpdir"/cache/omarchy/keybindings-*.records
+stale_key=$(
+  {
+    printf 'v14\n'
+    PATH="$stub_bin:$PATH" hyprctl devices 2>/dev/null | grep -F 'active keymap:'
+    PATH="$stub_bin:$PATH" hyprctl binds 2>/dev/null
+  } | sha256sum | awk '{ print $1 }'
+)
+printf 'SUPER + RETURN  → a row an older version cached\tstale\t\n' \
+  >"$tmpdir/cache/omarchy/keybindings-$stale_key.records"
+
+! grep -q 'an older version cached' <<<"$(keybindings)" ||
+  fail "a cache written before rows paired and sorted by id is not served"
+pass "a cache written before rows paired and sorted by id is not served"
 
 # An id and the description beside it only differ once something translates the
 # description, so from here on the config declares both. It declares nothing

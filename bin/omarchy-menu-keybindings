@@ -594,9 +594,14 @@ output_binding_records_uncached() {
   [[ -n $dynamic ]]
 }
 
+# A record reaches the cache already paired and sorted, and nothing else in the
+# key below says how. The version is what retires the caches an earlier one
+# wrote, so any change to how a record is laid out or where a row sorts has to
+# bump it: a machine whose keymap and binds have not moved reads the old rows
+# back for as long as the key agrees.
 keybindings_cache_key() {
   {
-    printf 'v14\n'
+    printf 'v16\n'
     hyprctl devices 2>/dev/null | grep -F 'active keymap:'
     hyprctl binds 2>/dev/null
   } | sha256sum | awk '{ print $1 }'
