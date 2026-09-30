@@ -320,3 +320,25 @@ rendered=$(keybindings)
    $(grep -n '→ Reveal active window on top$' <<<"$rendered" | cut -d: -f1) )) ||
   fail "a media key whose label is translated stays in the tail" "$rendered"
 pass "a media key whose label is translated stays in the tail"
+
+# An id is written by hand, and the record the parser reads is comma separated
+# with only its last field rebuilt out of the leftovers. A comma in an id would
+# push the dispatcher into the field behind it, leaving a row that renders and
+# then runs nothing.
+cat >"$home/.config/hypr/hyprland.lua" <<LUA
+dofile("$ROOT/default/hypr/bootstrap.lua")
+require("default.hypr.helpers")
+
+o.bind("SUPER + ALT + Z", "Zoom out", "omarchy-zoom out", { id = "Zoom, out" })
+LUA
+
+stub_hyprctl <<BINDS
+$(lua_bind 72 "SUPER ALT + Z" "Zoom out")
+BINDS
+
+rm -rf "$tmpdir/cache"
+keybindings >/dev/null
+grep -qP '→ Zoom out\texec\tomarchy-zoom out$' "$tmpdir"/cache/omarchy/keybindings-*.records ||
+  fail "an id holding a comma still dispatches what its bind declared" \
+    "$(cat "$tmpdir"/cache/omarchy/keybindings-*.records)"
+pass "an id holding a comma still dispatches what its bind declared"

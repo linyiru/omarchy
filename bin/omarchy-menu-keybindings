@@ -350,6 +350,14 @@ dynamic_bindings() {
       modifiers=$(modmask_to_text "$modmask")
       arg="${arg//~\/.local\/share\/omarchy\/bin\//}"
 
+      # The record below is comma separated and the parser rebuilds only its last
+      # field out of whatever is left over, so the dispatcher's arg is the one
+      # field allowed to hold a comma. An id is written by hand in Lua, and a
+      # comma in one would push the dispatcher out of the field the row dispatches
+      # from. Nothing reads the id back as text, only compares it, so dropping the
+      # comma costs the id nothing.
+      id="${id//,/}"
+
       printf '%s,%s,%s,%s,%s,%s\n' "$modifiers" "$key" "$description" "$id" "$dispatcher" "$arg"
     done
 }
