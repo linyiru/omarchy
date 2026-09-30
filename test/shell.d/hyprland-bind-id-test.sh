@@ -42,6 +42,19 @@ grep -qx 'description: Calendar' <<<"$declared" ||
   fail "a declared id leaves the description alone" "$declared"
 pass "a declared id is the one the bind keeps"
 
+# Nothing stops a config from handing one options table to several binds, and the
+# id fills in only when none is set yet. Write that fallback into the table the
+# caller passed and the first description becomes the id of every bind after it,
+# which is the one way an id can be wrong without anyone declaring it.
+declared=$(bound '
+local shared = {}
+o.bind("SUPER + K", "Calendar", "true", shared)
+o.bind("SUPER + M", "Mail", "true", shared)
+')
+grep -qx 'id: Mail' <<<"$declared" ||
+  fail "a reused options table does not keep the first bind's id" "$declared"
+pass "a reused options table does not keep the first bind's id"
+
 # The whole point of the id: this command's first argument is matched against an
 # open window's class or title, so it has to hold still while the label moves.
 declared=$(bound 'o.bind("SUPER + K", "Photos", { webapp = "https://photos.test/", focus = true }, { id = "Google Photos" })')

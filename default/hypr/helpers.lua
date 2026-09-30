@@ -136,7 +136,14 @@ function o.preinstalled_bindings_enabled()
 end
 
 function o.bind(keys, description, dispatcher, options)
-  local opts = options or {}
+  -- Copy what the caller handed over rather than writing into it. The id below
+  -- fills in only when none is set yet, so a config reusing one options table
+  -- across several binds would give every later bind the first one's id.
+  local opts = {}
+
+  for key, value in pairs(options or {}) do
+    opts[key] = value
+  end
 
   if description then
     opts.description = description
