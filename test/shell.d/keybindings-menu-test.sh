@@ -251,7 +251,7 @@ keybindings_under() {
     bash "$ROOT/bin/omarchy-menu-keybindings" --print
 }
 
-if locale -a 2>/dev/null | grep -qix 'en_US.utf8'; then
+if locale -a 2>/dev/null | grep -qix 'en_US.utf-\?8'; then
   ordered_under_c=$(keybindings_under C)
   ordered_under_en=$(keybindings_under en_US.UTF-8)
 
