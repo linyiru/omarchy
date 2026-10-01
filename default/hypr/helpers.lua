@@ -135,7 +135,26 @@ function o.preinstalled_bindings_enabled()
   return not file_exists((os.getenv("HOME") or "") .. "/.local/state/omarchy/preinstalls-removed")
 end
 
-function o.bind(keys, description, dispatcher, options)
+-- A bind written wrong says so on stderr. Not stdout: the keybindings menu
+-- loads the whole config under a stub and reads bind records off what hl.bind
+-- prints there, so a warning on that stream would arrive as a row.
+local function warn(message)
+  io.stderr:write("omarchy: " .. message .. "\n")
+end
+
+function o.bind(keys, description, dispatcher, options, ...)
+  -- Lua discards an argument a function does not declare, so a bind written with
+  -- a fifth one still binds and still works, having quietly lost whatever was in
+  -- it. An id passed that way is the case that bites: the bind falls back to its
+  -- description, and the only symptom is a row somewhere else in the menu.
+  local extra = select("#", ...)
+
+  if extra > 0 then
+    warn("the bind for " .. tostring(keys) .. " passes " .. (4 + extra) ..
+      " arguments and Lua drops everything past the fourth. An id belongs in the " ..
+      "options table: o.bind(keys, description, dispatcher, { id = \"...\" }).")
+  end
+
   -- Copy what the caller handed over rather than writing into it. The id below
   -- fills in only when none is set yet, so a config reusing one options table
   -- across several binds would give every later bind the first one's id.
@@ -164,9 +183,9 @@ function o.bind(keys, description, dispatcher, options)
   hl.bind(keys, dispatcher, opts)
 end
 
-function o.rebind(keys, description, dispatcher, options)
+function o.rebind(keys, description, dispatcher, options, ...)
   hl.unbind(keys)
-  o.bind(keys, description, dispatcher, options)
+  o.bind(keys, description, dispatcher, options, ...)
 end
 
 function o.launch(command)
@@ -215,8 +234,10 @@ function o.launch_sole(match, command)
   return "omarchy-launch-or-focus " .. shell_quote(match) .. " " .. shell_quote(o.launch(command))
 end
 
-function o.bind_toggle(keys, description, toggle, options)
-  o.bind(keys, description, "omarchy-toggle-" .. toggle, options)
+-- Hands on whatever it was given past its fourth argument, so a toggle written
+-- with a fifth one reaches the warning in o.bind rather than losing it here.
+function o.bind_toggle(keys, description, toggle, options, ...)
+  o.bind(keys, description, "omarchy-toggle-" .. toggle, options, ...)
 end
 
 function o.notify(message)
