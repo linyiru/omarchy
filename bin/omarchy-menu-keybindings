@@ -211,6 +211,14 @@ local function one_line(value)
   return (tostring(value):gsub("[\t\n\r]", " "))
 end
 
+-- The description is the one field the menu matches against what `hyprctl binds`
+-- reports, and hyprctl prints one field to a line, so the description it reports
+-- stops at the first newline. Stop this copy there too: a field that folded the
+-- newline into a space could never meet the description it is looked up by.
+local function first_line(value)
+  return (tostring(value):gsub("\n.*", ""))
+end
+
 hl = setmetatable({
   dsp = dsp_proxy("hl.dsp"),
   bind = function(keys, bind_dispatcher, opts)
@@ -239,7 +247,7 @@ hl = setmetatable({
 
       print(table.concat({
         one_line(modmask),
-        one_line(opts.description),
+        one_line(first_line(opts.description)),
         one_line(id),
         one_line(key),
         one_line(kind),
@@ -321,6 +329,14 @@ dynamic_bindings() {
       # Lua binds report their full display key ("SUPER + code:20"); the
       # modifiers are already carried separately in modmask.
       key="${key##* + }"
+
+      # The description Hyprland hands back is the config author's own text, and
+      # this is where it enters a tab delimited record. Fold the delimiter out of
+      # it the way the Lua scan folds its own copy: a tab left in reaches the
+      # record as a field of its own, where the menu reads the back half of a
+      # label as the dispatcher it would run, and no folded description the scan
+      # stored can be found by an unfolded one.
+      description="${description//[$'\t\r']/ }"
 
       if [[ -z $key && $keycode != "0" ]]; then
         key="code:$keycode"
@@ -574,7 +590,7 @@ output_binding_records_uncached() {
 
 keybindings_cache_key() {
   {
-    printf 'v14\n'
+    printf 'v17\n'
     hyprctl devices 2>/dev/null | grep -F 'active keymap:'
     hyprctl binds 2>/dev/null
   } | sha256sum | awk '{ print $1 }'
