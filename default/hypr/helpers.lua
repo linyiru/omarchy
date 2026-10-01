@@ -145,6 +145,16 @@ function o.bind(keys, description, dispatcher, options)
     opts[key] = value
   end
 
+  -- pairs sees a table's own keys and nothing it inherits, so carry the
+  -- metatable over too: a config that keeps shared flags on one table and
+  -- points each bind's options at it through __index would otherwise hand
+  -- hl.bind a copy that has lost them.
+  local inherited = getmetatable(options or {})
+
+  if type(inherited) == "table" then
+    setmetatable(opts, inherited)
+  end
+
   if description then
     opts.description = description
   end

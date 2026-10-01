@@ -10,7 +10,8 @@ trap 'rm -rf "$tmpdir"' EXIT
 
 # What o.bind hands to hl.bind, one declaration at a time. The dispatcher is
 # printed as the command string Hyprland would run, since that is where a web
-# app bind carries the name it matches a window by.
+# app bind carries the name it matches a window by. locked stands in for the
+# flags o.bind only forwards, having no opinion of its own about them.
 bound() {
   cat >"$tmpdir/bind.lua" <<LUA
 hl = {
@@ -18,6 +19,7 @@ hl = {
   bind = function(keys, dispatcher, opts)
     print("description: " .. tostring(opts.description))
     print("id: " .. tostring(opts.id))
+    print("locked: " .. tostring(opts.locked))
     print("dispatcher: " .. tostring(dispatcher))
   end,
 }
@@ -54,6 +56,18 @@ o.bind("SUPER + M", "Mail", "true", shared)
 grep -qx 'id: Mail' <<<"$declared" ||
   fail "a reused options table does not keep the first bind's id" "$declared"
 pass "a reused options table does not keep the first bind's id"
+
+# Copying the options table is how that works, and a copy made key by key sees
+# only the keys a table holds itself. A config that shares its flags through
+# __index would have handed Hyprland the flags before the copy and nothing after
+# it, so the copy carries the metatable too.
+declared=$(bound '
+local shared = { locked = true }
+o.bind("SUPER + K", "Calendar", "true", setmetatable({}, { __index = shared }))
+')
+grep -qx 'locked: true' <<<"$declared" ||
+  fail "a flag a bind inherits through a metatable survives the copy" "$declared"
+pass "a flag a bind inherits through a metatable survives the copy"
 
 # The whole point of the id: this command's first argument is matched against an
 # open window's class or title, so it has to hold still while the label moves.
