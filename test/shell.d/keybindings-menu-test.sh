@@ -252,9 +252,21 @@ keybindings_under() {
 }
 
 if locale -a 2>/dev/null | grep -qix 'en_US.utf8'; then
-  [[ $(keybindings_under C) == $(keybindings_under en_US.UTF-8) ]] ||
-    fail "the row order does not follow the collation" \
-      "$(diff <(keybindings_under C) <(keybindings_under en_US.UTF-8))"
+  ordered_under_c=$(keybindings_under C)
+  ordered_under_en=$(keybindings_under en_US.UTF-8)
+
+  # Both renders have to carry the two rows this is about before comparing them
+  # proves anything, and there is no empty render to notice instead: a hyprctl
+  # that reports no binds still leaves the two rows static_bindings prints, and
+  # those tie the same way under either collation.
+  for order in "$ordered_under_c" "$ordered_under_en"; do
+    (( $(grep -c 'SLASH' <<<"$order") == 2 )) ||
+      fail "both collations render the rows the comparison is about" "$order"
+  done
+
+  collation_diff=$(diff <(printf '%s\n' "$ordered_under_c") \
+    <(printf '%s\n' "$ordered_under_en")) ||
+    fail "the row order does not follow the collation" "$collation_diff"
   pass "the row order does not follow the collation"
 else
   # With no second collation generated, sort falls back to comparing bytes and
