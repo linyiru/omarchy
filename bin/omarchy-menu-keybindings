@@ -202,6 +202,15 @@ noop = setmetatable({}, {
   end,
 })
 
+-- A description, an id and a command are the config author's own text, and the
+-- record below is tab delimited, one bind to a line. A tab inside a field would
+-- move every field after it one column along and a newline would split the bind
+-- into two records, so fold either into a space: a bind is worth reporting with
+-- its label squeezed, and not worth losing.
+local function one_line(value)
+  return (tostring(value):gsub("[\t\n\r]", " "))
+end
+
 hl = setmetatable({
   dsp = dsp_proxy("hl.dsp"),
   bind = function(keys, bind_dispatcher, opts)
@@ -228,7 +237,14 @@ hl = setmetatable({
         arg = o.bind_commands[bind_dispatcher]
       end
 
-      print(table.concat({ tostring(modmask), opts.description, id, key, kind, arg }, "\t"))
+      print(table.concat({
+        one_line(modmask),
+        one_line(opts.description),
+        one_line(id),
+        one_line(key),
+        one_line(kind),
+        one_line(arg),
+      }, "\t"))
     end
 
     return noop

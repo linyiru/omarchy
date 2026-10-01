@@ -96,8 +96,9 @@ mkdir -p "$home/.config/hypr"
 
 # The scan reads ~/.config/hypr/hyprland.lua. Pull in the one binding file this
 # is about rather than the whole config: the rest of it is not what is under
-# test. The two binds below are what a personal config adds, an id that is
-# nothing like its label and a bind written straight against hl.bind.
+# test. The three binds below are what a personal config adds: an id that is
+# nothing like its label, a bind written straight against hl.bind, and a label
+# and id with a tab and a newline of their own in them.
 cat >"$home/.config/hypr/hyprland.lua" <<LUA
 dofile("$ROOT/default/hypr/bootstrap.lua")
 require("default.hypr.helpers")
@@ -105,6 +106,7 @@ require("default.hypr.bindings.applications")
 
 o.bind("SUPER + ALT + Z", "Renamed later", { webapp = "https://example.test/", focus = true }, { id = "Stable Id" })
 hl.bind("SUPER + ALT + Y", hl.dsp.exec_cmd("true"), { description = "Written against hl" })
+o.bind("SUPER + ALT + X", "Tabbed\tlabel", "true", { id = "Split\nid" })
 LUA
 
 scanned=$(env -i PATH="$PATH" HOME="$home" OMARCHY_PATH="$ROOT" lua "$tmpdir/scan.lua")
@@ -114,6 +116,14 @@ scanned=$(env -i PATH="$PATH" HOME="$home" OMARCHY_PATH="$ROOT" lua "$tmpdir/sca
 [[ -z $(awk -F '\t' '$3 == "" { print }' <<<"$scanned") ]] ||
   fail "every bind the scan reports answers to an id" "$scanned"
 pass "every bind the scan reports answers to an id"
+
+# The record is tab delimited, one bind to a line, and a description and an id
+# are the author's own text. Whatever they put in it, the shape holds.
+[[ -z $(awk -F '\t' 'NF != 6 { print }' <<<"$scanned") ]] ||
+  fail "every record the scan reports keeps its six fields" "$scanned"
+awk -F '\t' '$2 == "Tabbed label" && $3 == "Split id" { found = 1 } END { exit !found }' <<<"$scanned" ||
+  fail "a tab or a newline in a bind's own text folds into a space" "$scanned"
+pass "a tab or a newline in a bind's own text folds into a space"
 
 awk -F '\t' '$2 == "Terminal" && $3 == "Terminal" { found = 1 } END { exit !found }' <<<"$scanned" ||
   fail "the scan reports the description as the id when no other was declared" "$scanned"
