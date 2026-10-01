@@ -69,6 +69,32 @@ grep -qF 'SUPER + CTRL + N' <<<"$reported" ||
   fail "a toggle bind passing a fifth argument is reported against its own keys" "$reported"
 pass "a toggle bind passing a fifth argument is reported against its own keys"
 
+reported=$(warnings 'o.bind("SUPER + RETURN", "Terminal", { omarchy = "terminal", id = "Terminal" })')
+grep -qF 'SUPER + RETURN' <<<"$reported" ||
+  fail "an id inside a dispatcher table is reported" "$reported"
+grep -qF 'id = "Terminal"' <<<"$reported" ||
+  fail "an id inside a dispatcher table is quoted back in the warning" "$reported"
+pass "an id inside a dispatcher table is reported"
+
+reported=$(warnings 'o.bind("SUPER + RETURN", "Terminal", { omarchy = "terminal" }, { id = "Terminal" })')
+[[ -z $reported ]] ||
+  fail "an id in the options table is where it belongs" "$reported"
+pass "an id in the options table is where it belongs"
+
+# The dispatcher reads its own keys one at a time, so a stray id costs the bind
+# nothing at the keypress. Only the id is lost, which is why it needs saying.
+rendered=$(printed 'o.bind("SUPER + RETURN", "Terminal", { omarchy = "terminal", id = "Terminal" })')
+grep -qx 'dispatcher: omarchy-launch-terminal' <<<"$rendered" ||
+  fail "a dispatcher table carrying a stray id still dispatches" "$rendered"
+pass "a dispatcher table carrying a stray id still dispatches"
+
+# command_from hands back a table whose keys it does not know, and Hyprland's own
+# API is free to put anything in one. Warning there would be a guess.
+reported=$(warnings 'o.bind("SUPER + K", "Opaque", { unknown_to_omarchy = true, id = "Opaque" })')
+[[ -z $reported ]] ||
+  fail "a dispatcher table Omarchy does not recognise is left alone" "$reported"
+pass "a dispatcher table Omarchy does not recognise is left alone"
+
 # A warning nobody ever sees is the only acceptable outcome on a stock machine,
 # so load every binding file Omarchy ships. Read the stub out of the menu rather
 # than keeping a second copy of it: it is the one place the whole config loads.

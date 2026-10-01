@@ -174,13 +174,25 @@ function o.bind(keys, description, dispatcher, options, ...)
   -- The description is the only name most binds need, so it is the default.
   opts.id = opts.id or description
 
-  dispatcher = command_from(dispatcher, opts.id)
+  local command = command_from(dispatcher, opts.id)
 
-  if type(dispatcher) == "string" then
-    dispatcher = hl.dsp.exec_cmd(dispatcher)
+  -- command_from hands back the table it was given when it recognises none of
+  -- its keys, so anything else means the table was a dispatcher it understood.
+  -- An id there is read by nothing, and the bind falls back to its description:
+  -- the same silent loss as a fifth argument, reached from the other direction.
+  -- Scoped to the tables command_from recognises on purpose, since a table it
+  -- passes straight through could be anything Hyprland's own API hands back.
+  if type(dispatcher) == "table" and dispatcher.id ~= nil and command ~= dispatcher then
+    warn("the bind for " .. tostring(keys) .. " sets id = \"" .. tostring(dispatcher.id) ..
+      "\" inside its dispatcher table, where nothing reads it. An id belongs in the options " ..
+      "table: o.bind(keys, description, dispatcher, { id = \"...\" }).")
   end
 
-  hl.bind(keys, dispatcher, opts)
+  if type(command) == "string" then
+    command = hl.dsp.exec_cmd(command)
+  end
+
+  hl.bind(keys, command, opts)
 end
 
 function o.rebind(keys, description, dispatcher, options, ...)
