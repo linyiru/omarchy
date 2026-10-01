@@ -115,6 +115,11 @@ require("default.hypr.bindings.tiling")
 require("default.hypr.bindings.utilities")
 require("default.hypr.bindings.voxtype")
 require("default.hypr.bindings.applications")
+
+-- The scan loads all of this inside a pcall, so a module that threw part way
+-- down the list would leave stderr empty too. This line runs only if every
+-- require above returned, which is what makes that silence mean something.
+io.open("$tmpdir/loaded", "w"):close()
 LUA
 
 scan() {
@@ -122,14 +127,13 @@ scan() {
 }
 
 scanned=$(scan 2>/dev/null)
+rm -f "$tmpdir/loaded"
 reported=$(scan 2>&1 >/dev/null)
 
-# The scan loads the config through pcall, so a module that threw would leave
-# stderr empty and pass the assertion below for the wrong reason. Count the
-# records first: every binding file has to have run for the silence to mean
-# anything.
-(( $(grep -c . <<<"$scanned") > 150 )) ||
-  fail "every binding file Omarchy ships loads under the scan" "$scanned"
+[[ -n $scanned ]] ||
+  fail "the scan reports the bindings Omarchy ships" "$reported"
+[[ -f $tmpdir/loaded ]] ||
+  fail "every binding file Omarchy ships loads under the scan" "$reported"
 [[ -z $reported ]] ||
   fail "the bindings Omarchy ships warn about nothing" "$reported"
 pass "the bindings Omarchy ships warn about nothing"
