@@ -278,3 +278,23 @@ fi
 grep -qF 'LC_ALL=C sort -k1,1n -k2,2' "$ROOT/bin/omarchy-menu-keybindings" ||
   fail "the sort that orders the rows names the collation it wants"
 pass "the sort that orders the rows names the collation it wants"
+
+# Rows are sorted before they are cached and the key holds nothing that says how,
+# so a cache written before the collation was pinned reads back in whatever order
+# it was written on a machine whose keymap and binds have not moved. The version
+# in the key is the only thing that retires it. Plant a record under the key the
+# version before this one would have written: it has to be ignored, not served.
+rm -f "$tmpdir"/cache/omarchy/keybindings-*.records
+stale_key=$(
+  {
+    printf 'v14\n'
+    PATH="$stub_bin:$PATH" hyprctl devices 2>/dev/null | grep -F 'active keymap:'
+    PATH="$stub_bin:$PATH" hyprctl binds 2>/dev/null
+  } | sha256sum | awk '{ print $1 }'
+)
+printf 'SUPER + SLASH  → a row an older version cached\tstale\t\n' \
+  >"$tmpdir/cache/omarchy/keybindings-$stale_key.records"
+
+! grep -q 'an older version cached' <<<"$(keybindings)" ||
+  fail "a cache written before the row order was pinned is not served"
+pass "a cache written before the row order was pinned is not served"
