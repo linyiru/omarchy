@@ -134,8 +134,53 @@ pass "a web app Omarchy ships focuses the window its id names"
 # A web app bind that focuses an open window spends its id on a pattern the web
 # app decides, so it cannot inherit one from a description somebody may later
 # translate. Anything added alongside the four has to say so out loud.
-while IFS= read -r binding; do
-  [[ $binding == *"id = "* ]] ||
-    fail "every web app bind that focuses an open window names its own id" "$binding"
-done < <(grep -rh 'webapp = ' "$ROOT/default/hypr/bindings" | grep -F 'focus = true')
+#
+# Ask o.bind which binds those are rather than matching the source text. A call
+# written across several lines reads the same to Lua and not at all to a grep
+# that works a line at a time, and the declaration is only visible here anyway:
+# an id the bind named itself and one that defaulted to the description are the
+# same id by the time anything downstream sees it.
+cat >"$tmpdir/webapps.lua" <<LUA
+local inert = {}
+local anything
+anything = setmetatable({}, {
+  __index = function() return anything end,
+  __call = function() return setmetatable({}, inert) end,
+})
+
+hl = setmetatable({
+  bind = function() end,
+  unbind = function() end,
+}, { __index = function() return anything end })
+
+-- The four are declared behind this, and a box that has had its preinstalls
+-- removed is not a reason to check nothing.
+_G.omarchy_preinstalled_bindings = true
+
+dofile("$ROOT/default/hypr/bootstrap.lua")
+require("default.hypr.helpers")
+
+local bound = o.bind
+
+o.bind = function(keys, description, dispatcher, options)
+  if type(dispatcher) == "table" and dispatcher.webapp and dispatcher.focus then
+    local declared = options ~= nil and options.id ~= nil
+    print(tostring(keys) .. "\t" .. tostring(declared))
+  end
+
+  return bound(keys, description, dispatcher, options)
+end
+
+for _, module in ipairs({
+  "media", "clipboard", "tiling", "utilities", "voxtype", "applications",
+}) do
+  require("default.hypr.bindings." .. module)
+end
+LUA
+
+webapps=$(env -i PATH="$PATH" HOME="$home" OMARCHY_PATH="$ROOT" lua "$tmpdir/webapps.lua")
+[[ -n $webapps ]] ||
+  fail "the binding files Omarchy ships declare a web app bind that focuses a window" "$webapps"
+[[ -z $(awk -F '\t' '$2 != "true" { print }' <<<"$webapps") ]] ||
+  fail "every web app bind that focuses an open window names its own id" "$webapps"
 pass "every web app bind that focuses an open window names its own id"
