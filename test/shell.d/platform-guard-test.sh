@@ -369,7 +369,7 @@ run_leaf() {
 }
 
 mkdir -p "$alpm"
-for platform in apple-silicon qualcomm; do
+for platform in apple-silicon qualcomm raspberrypi; do
   if run_leaf "$platform"; then
     fail "hardware setup on $platform refuses to start without the platform guard"
   fi
