@@ -47,6 +47,11 @@ for platform in apple-silicon qualcomm raspberrypi generic-aarch64 generic; do
   else
     ! grep -Fxq linux-firmware-qcom "$work/$platform.packages" || fail "$platform: no Qualcomm firmware"
   fi
+  if [[ $platform == "raspberrypi" ]]; then
+    grep -Fxq firmware-raspberrypi "$work/$platform.packages" || fail "Raspberry Pi adds its radio firmware"
+  else
+    ! grep -Fxq firmware-raspberrypi "$work/$platform.packages" || fail "$platform: no Raspberry Pi firmware"
+  fi
   # The Mac's packages, and wf-recorder, which records its screen: nothing else
   # captures on Apple Silicon.
   for package in omarchy-mac omarchy-mac-boot wf-recorder; do

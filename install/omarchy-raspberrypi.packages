@@ -1,0 +1,7 @@
+# Raspberry Pi additions, composed after omarchy-base.packages and
+# omarchy-aarch64.packages (omarchy-pkg-defaults raspberrypi). The kernel,
+# firmware blobs and boot partition come with the Pi's image, as the kernel
+# and bootloader do from the ISO on x86_64.
+
+# Wi-Fi and Bluetooth firmware for the Pi's onboard radio (Arch Linux ARM).
+firmware-raspberrypi
