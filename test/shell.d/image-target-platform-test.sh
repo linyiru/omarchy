@@ -253,6 +253,17 @@ world on-a-mac aarch64 apple,j416c apple,t6021 apple,arm-platform
 pid1 on-a-mac chroot
 manifest on-a-mac $'format=1\nplatform=generic-aarch64\n'
 expect on-a-mac generic-aarch64 "a generic aarch64 image built on a Mac is generic aarch64"
+world pi-on-x86 x86_64
+pid1 pi-on-x86 chroot
+manifest pi-on-x86 $'format=1\nplatform=raspberrypi\n'
+if detect pi-on-x86 >/dev/null 2>&1; then
+  fail "a Raspberry Pi manifest on an x86 CPU fails"
+fi
+pass "a Raspberry Pi manifest on an x86 CPU fails"
+world pi-on-arm aarch64 linux,dummy-virt
+pid1 pi-on-arm chroot
+manifest pi-on-arm $'format=1\nplatform=raspberrypi\n'
+expect pi-on-arm raspberrypi "a Raspberry Pi image built on a generic aarch64 host is a Raspberry Pi"
 world odd-host aarch64 apple,j416c qcom,x1e80100
 pid1 odd-host chroot
 manifest odd-host $'format=1\nplatform=qualcomm\n'

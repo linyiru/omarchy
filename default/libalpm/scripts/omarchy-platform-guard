@@ -126,7 +126,7 @@ image_target() {
     echo "Error: the image manifest $manifest is not format=1" >&2
     return 1
   fi
-  if [[ ! $platform =~ ^(apple-silicon|qualcomm|generic-aarch64|generic)$ ]]; then
+  if [[ ! $platform =~ ^(apple-silicon|qualcomm|raspberrypi|generic-aarch64|generic)$ ]]; then
     echo "Error: the image manifest $manifest names no known platform: ${platform:-none}" >&2
     return 1
   fi

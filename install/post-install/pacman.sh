@@ -8,7 +8,7 @@ source "$OMARCHY_PATH/install/helpers/pacman.sh"
 source "$OMARCHY_PATH/install/helpers/image-target.sh"
 platform=$(omarchy-hw-platform)
 
-if [[ $platform == "qualcomm" || $platform == "generic-aarch64" ]]; then
+if [[ $platform == "qualcomm" || $platform == "raspberrypi" || $platform == "generic-aarch64" ]]; then
   omarchy-pkg-add archlinuxarm-keyring
 fi
 
@@ -16,7 +16,7 @@ omarchy_pacman_write_template "${OMARCHY_MIRROR:-stable}" "$platform" /etc/pacma
 
 # An image build leaves the keyring to each machine's first boot, so no two
 # share a master key (install/helpers/image-target.sh).
-if [[ $platform == "qualcomm" || $platform == "generic-aarch64" ]]; then
+if [[ $platform == "qualcomm" || $platform == "raspberrypi" || $platform == "generic-aarch64" ]]; then
   if omarchy_image_init && omarchy_image_manifest_present; then
     install -m 0644 /dev/null "$omarchy_image_keyring_request"
   else

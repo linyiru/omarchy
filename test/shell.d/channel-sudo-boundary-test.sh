@@ -76,7 +76,7 @@ done
 
 # A channel with no qualified packages for the platform stops before anything,
 # the dev confirmation included.
-for platform in apple-silicon qualcomm generic-aarch64; do
+for platform in apple-silicon qualcomm raspberrypi generic-aarch64; do
   for channel in stable rc edge dev; do
     [[ $platform != "apple-silicon" && ( $channel == "edge" || $channel == "dev" ) ]] && continue
     reset_boundary
@@ -90,7 +90,7 @@ pass "aarch64 platforms refuse a channel not qualified for them before any chang
 
 ! grep -q 'no Omarchy repository' "$boundary_tmp/output" || fail "a machine with an Omarchy repository hears only the refusal"
 printf '[options]\nArchitecture = auto\n[core]\nServer = https://arm.example/$arch/$repo\n' >"$config"
-for platform in qualcomm generic-aarch64 apple-silicon; do
+for platform in qualcomm raspberrypi generic-aarch64 apple-silicon; do
   reset_boundary
   if SUDO_TEST_PLATFORM=$platform run_channel stable; then fail "$platform refused stable"; fi
   if [[ $platform == "apple-silicon" ]]; then
@@ -118,7 +118,7 @@ pass "a stale dev checkout is rejected before linking or privileged work"
 # once it tells platforms apart: a checkout without that is refused the same way.
 checkout="$SUDO_TEST_HOME/omarchy"
 for required in bin/omarchy-hw-platform install/helpers/pacman.sh; do
-  for platform in qualcomm generic-aarch64; do
+  for platform in qualcomm raspberrypi generic-aarch64; do
     reset_boundary
     mv "$checkout/$required" "$boundary_tmp/saved-required"
     if SUDO_TEST_PLATFORM=$platform run_channel dev; then fail "$platform: a dev checkout without $required was accepted"; fi

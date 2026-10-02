@@ -19,7 +19,7 @@ omarchy_pacman_validate_channel() {
 omarchy_pacman_qualified_channels() {
   case ${1:-} in
     generic) echo "stable rc edge" ;;
-    qualcomm | generic-aarch64) echo "edge" ;;
+    qualcomm | raspberrypi | generic-aarch64) echo "edge" ;;
     apple-silicon) echo "" ;;
     *) return 1 ;;
   esac
@@ -49,7 +49,7 @@ omarchy_pacman_configured_channel() {
   echo "${BASH_REMATCH[1]}"
 }
 
-# Install finalization on a channel not qualified for Snapdragon or another
+# Install finalization on a channel not qualified for Snapdragon, a Raspberry Pi or another
 # aarch64 machine leaves it no Omarchy repository (see
 # omarchy_pacman_write_template), so Omarchy itself never updates there. Says
 # so, and how to fix it, when <config> names no Omarchy repository on one of
@@ -62,7 +62,7 @@ omarchy_pacman_missing_repository_notice() {
   repos=$(pacman-conf --config "$config" --repo-list 2>/dev/null) || return 0
   ! grep -qx omarchy <<<"$repos" || return 0
   [[ -n $platform ]] || platform=$(omarchy-hw-platform 2>/dev/null) || return 0
-  [[ $platform == "qualcomm" || $platform == "generic-aarch64" ]] || return 0
+  [[ $platform == "qualcomm" || $platform == "raspberrypi" || $platform == "generic-aarch64" ]] || return 0
   echo "This machine has no Omarchy repository, so its Omarchy packages get no updates. Switch to edge with: omarchy-channel-set edge"
 }
 
@@ -174,7 +174,7 @@ omarchy_pacman_write_template() {
       cp -f "$defaults/pacman-$channel.conf" "$config" || return 1
       cp -f "$defaults/mirrorlist-$channel" "$mirrorlist" || return 1
       ;;
-    qualcomm | generic-aarch64)
+    qualcomm | raspberrypi | generic-aarch64)
       cp -f "$defaults/pacman-aarch64.conf" "$config" || return 1
       cp -f "$defaults/mirrorlist-aarch64" "$mirrorlist" || return 1
       if omarchy_pacman_channel_qualified "$channel" "$platform" 2>/dev/null; then

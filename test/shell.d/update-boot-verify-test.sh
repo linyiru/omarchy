@@ -21,7 +21,7 @@ export OMARCHY_UPDATE_LOGGED=1
 
 tmp=$boundary_tmp/boot
 mkdir -p "$tmp"
-for platform in apple-silicon qualcomm generic-aarch64 generic; do
+for platform in apple-silicon qualcomm raspberrypi generic-aarch64 generic; do
   fake_platform "$tmp/$platform" "$platform"
 done
 
@@ -64,7 +64,7 @@ reboot_offered() {
 
 # x86, generic aarch64 and Qualcomm: the boot check is a no-op, even with a
 # failing boot-package entrypoint on disk, and nothing asks for root.
-for platform in generic generic-aarch64 qualcomm; do
+for platform in generic raspberrypi generic-aarch64 qualcomm; do
   run_update "$platform" "$tmp/failing"
   (( status == 0 )) || fail "$platform: an update reports success" "status $status: $(cat "$tmp/err")"
   [[ ! -e $tmp/boot-ran ]] || fail "$platform: no boot-package entrypoint runs" "$(cat "$tmp/boot-ran")"
