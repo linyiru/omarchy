@@ -87,8 +87,8 @@ if ! platform=$("${detect[@]}"); then
   exit 1
 fi
 
-# Generic, generic-aarch64, Raspberry Pi and Qualcomm machines have no registered
-# package: every operation is a no-op there and callers keep their generic path.
+# Generic, generic-aarch64 and Qualcomm machines have no registered package:
+# every operation is a no-op there and callers keep their generic path.
 # Apple Silicon's boot operations belong to omarchy-mac-boot, and its system and
 # user setup and app-install hooks to omarchy-mac (both omacom/omarchy-mac).
 # Provisioning and factory reset have no other path on a Mac, only update-verify
@@ -116,6 +116,28 @@ case $platform:$operation in
       reset-prepare reset-verify reset-commit reset-rollback
       update-verify update-takeover
       luks-slots
+      setup-boot
+    )
+    ;;
+  # A Raspberry Pi boots its firmware's config.txt, kernel and initramfs from
+  # the FAT boot partition, never Limine or a UKI, so the generic boot path has
+  # nothing to drive there. Its boot operations belong to omarchy-rpi-boot and
+  # its setup and app-install hooks to omarchy-rpi. Provisioning, factory
+  # reset, the update's boot check and takeover, and boot setup are required,
+  # as on a Mac. luks-slots is optional until the Pi's boot checks prove
+  # encrypted roots, and migrate is optional.
+  raspberrypi:setup-system | raspberrypi:setup-user | raspberrypi:post-install | raspberrypi:pre-remove)
+    implementation=/usr/lib/omarchy/rpi
+    package=omarchy-rpi
+    required=()
+    ;;
+  raspberrypi:*)
+    implementation=/usr/lib/omarchy/rpi-boot
+    package=omarchy-rpi-boot
+    required=(
+      provision-prepare provision-commit provision-verify
+      reset-prepare reset-verify reset-commit reset-rollback
+      update-verify update-takeover
       setup-boot
     )
     ;;
