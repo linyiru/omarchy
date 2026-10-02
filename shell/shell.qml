@@ -1884,6 +1884,17 @@ ShellRoot {
       if (card) return JSON.stringify(DevInspect.itemTree(card, card, 0))
       return shell.devPanelOpen(id) ? "opening" : "unknown"
     }
+
+    // Development: reload the whole config into a fresh engine. Quickshell's
+    // file watcher only sees files loaded at startup, not the plugins the
+    // registry loads later, so a dev loop watching shell/ asks for it here.
+    // The installed shell runs with the watcher off on purpose (see
+    // omarchy-launch-shell), and so refuses.
+    function debugReload(): string {
+      if (Quickshell.env("QS_DISABLE_FILE_WATCHER")) return "disabled"
+      Quickshell.reload(false)
+      return "ok"
+    }
   }
 
   // ------------------------------------------------- dev panel capture / tree

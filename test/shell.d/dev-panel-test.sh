@@ -92,6 +92,7 @@ assertEqual(settleDelay(5200, 5000, 400), 400, 'a clock that stepped back never 
 const shellSource = fs.readFileSync(root + '/shell/shell.qml', 'utf8')
 assert(/function debugPanelCapture\(id: string, path: string, scale: string\): string/.test(shellSource), 'the shell IPC captures a panel card')
 assert(/function debugPanelTree\(id: string\): string/.test(shellSource), 'the shell IPC describes a panel card')
+assert(/if \(Quickshell\.env\("QS_DISABLE_FILE_WATCHER"\)\) return "disabled"/.test(shellSource), 'the installed shell, which runs without the file watcher, refuses to reload')
 assert(/function devPanelOpen\(id\) \{[^}]*isBarWidgetPanelPlugin\(resolved\) && shell\.summon\(resolved/.test(shellSource), 'only a bar widget panel is summoned for a capture or a tree, not any plugin')
 assert(/if \(!devPanelOpen\(id\)\) return false/.test(shellSource), 'a capture summons through the bar widget check')
 assert(/devCaptureRequest\.createObject\(shell, \{ pluginId: id, path: path/.test(shellSource), 'each capture request gets its own timer, so overlapping ones keep their arguments')

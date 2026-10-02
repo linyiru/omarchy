@@ -160,3 +160,11 @@ if dev_panel capture omarchy.menu "$TMPDIR/menu.png" 2>"$TMPDIR/menu.err"; then 
 grep -q "No bar panel for omarchy.menu" "$TMPDIR/menu.err" || fail "panel capture says the menu is no bar panel" "$(cat "$TMPDIR/menu.err")"
 [[ $(OMARCHY_PATH="$test_root" "$ROOT/bin/omarchy-shell" shell debugPanelTree omarchy.menu) == "unknown" ]] || fail "panel tree refuses a plugin that isn't a bar panel"
 pass "a plugin that isn't a bar panel is refused, not opened"
+
+[[ $(OMARCHY_PATH="$test_root" "$ROOT/bin/omarchy-shell" shell debugReload) == "ok" ]] || fail_with_log "a shell with its file watcher on reloads on request"
+for _ in {1..50}; do
+  (( $(grep -c "Configuration Loaded" "$log") >= 2 )) && break
+  sleep 0.1
+done
+(( $(grep -c "Configuration Loaded" "$log") >= 2 )) || fail_with_log "the shell loads its config again after a reload"
+pass "the reload IPC loads the config again"
