@@ -70,7 +70,7 @@ for channel in stable rc edge dev; do
 done
 
 # Every aarch64 platform switches to edge and dev, copying its own templates.
-for platform in qualcomm generic-aarch64 apple-silicon; do
+for platform in qualcomm raspberrypi generic-aarch64 apple-silicon; do
   case $platform in
     apple-silicon) templates=default/pacman/apple-silicon ;;
     *) templates=default/pacman/aarch64 ;;
@@ -90,7 +90,7 @@ pass "aarch64 platforms switch to edge and dev through their own templates"
 
 # stable and rc would install the release line, which has no aarch64 support:
 # an aarch64 machine refuses them before anything changes.
-for platform in qualcomm generic-aarch64 apple-silicon; do
+for platform in qualcomm raspberrypi generic-aarch64 apple-silicon; do
   for channel in stable rc; do
     reset_boundary
     if SUDO_TEST_PLATFORM=$platform run_channel "$channel"; then fail "$platform accepted $channel"; fi

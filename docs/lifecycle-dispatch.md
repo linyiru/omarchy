@@ -13,7 +13,7 @@ The first form runs the operation. `--resolve` prints the entrypoint the operati
 
 | Situation | Run | `--resolve` |
 | --- | --- | --- |
-| The platform registers no package (`generic`, `generic-aarch64`, and `qualcomm` today) | no-op, exit 0 | prints nothing, exit 0 |
+| The platform registers no package (`generic`, `generic-aarch64`, `raspberrypi` and `qualcomm` today) | no-op, exit 0 | prints nothing, exit 0 |
 | The entrypoint exists and passes the trust rules | execs it; its exit status is the result | prints its path |
 | A required operation has no entrypoint, and the package is not installed | exit 3 (an entrypoint's own status could also be 3; with `--resolve` it is only this): `Error: <operation> on <platform> needs <package>, which provides <path>; it is not installed` | same error |
 | A required operation has no entrypoint, but the package is installed (its pacman record says so) | exit 1: `Error: <operation> on <platform> needs <path>, which <package> <version> does not provide; update <package>` | same error |
@@ -55,7 +55,7 @@ Registration is code in `bin/omarchy-lifecycle-dispatch`, not configuration. No 
 | --- | --- | --- | --- |
 | `apple-silicon` | `/usr/lib/omarchy/mac-boot` | `omarchy-mac-boot` | all its operations |
 | `apple-silicon`: `setup-system`, `setup-user`, `post-install`, `pre-remove` | `/usr/lib/omarchy/mac` | `omarchy-mac` | none |
-| `generic`, `generic-aarch64`, `qualcomm` | none | none | none: every operation is a no-op, and callers keep their generic path |
+| `generic`, `generic-aarch64`, `raspberrypi`, `qualcomm` | none | none | none: every operation is a no-op, and callers keep their generic path |
 
 The entrypoint for an operation is `<implementation directory>/<operation>`. A registered platform's required operations must be shipped. Its optional operations may be left out, and then they are no-ops.
 

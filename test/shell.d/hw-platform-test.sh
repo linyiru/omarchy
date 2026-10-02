@@ -8,7 +8,7 @@ detector="$ROOT/bin/omarchy-hw-platform"
 test_tmp=$(mktemp -d)
 trap 'rm -rf "$test_tmp"' EXIT
 
-for platform in apple-silicon qualcomm generic-aarch64 generic; do
+for platform in apple-silicon qualcomm raspberrypi generic-aarch64 generic; do
   fake_platform "$test_tmp/$platform" "$platform"
 done
 
@@ -21,8 +21,8 @@ if (( EUID != 0 )); then
 fi
 if (( EUID == 0 )) || unshare --user --map-root-user true 2>/dev/null; then
   live=$("${root_runner[@]}" "$detector") || fail "root detects the live platform"
-  [[ $live =~ ^(apple-silicon|qualcomm|generic-aarch64|generic)$ ]] || fail "root detects the live platform" "live: $live"
-  for platform in apple-silicon qualcomm generic-aarch64 generic; do
+  [[ $live =~ ^(apple-silicon|qualcomm|raspberrypi|generic-aarch64|generic)$ ]] || fail "root detects the live platform" "live: $live"
+  for platform in apple-silicon qualcomm raspberrypi generic-aarch64 generic; do
     fixture="$test_tmp/$platform"
     if [[ -f $fixture/proc/device-tree/compatible ]]; then
       mkdir -p "$fixture/sys/firmware/devicetree/base"
@@ -51,8 +51,8 @@ pass "the detector and the Apple predicate refuse an ordinary Bash launch with a
 
 require_platform_fixtures "the platform fixtures"
 
-# The four platforms every caller is written against.
-for platform in apple-silicon qualcomm generic-aarch64 generic; do
+# The five platforms every caller is written against.
+for platform in apple-silicon qualcomm raspberrypi generic-aarch64 generic; do
   fixture="$test_tmp/$platform"
   actual=$(OMARCHY_PROC_ROOT="$fixture/proc" PATH="$fixture/bin:$ROOT/bin:$PATH" "$detector") ||
     fail "the $platform fixture is detected"
@@ -136,18 +136,29 @@ for board in yoga-slim7x xps13-9345 t14s; do
 done
 pass "real Apple and Snapdragon device trees are recognised"
 
+# The Pi 4 Model B the Pi-hole runs on, and the Pi 5 and 400 as their
+# firmware's device trees name them.
+write_tree pi4-model-b proc raspberrypi,4-model-b brcm,bcm2711
+write_tree pi400 proc raspberrypi,400 brcm,bcm2711
+write_tree pi5-model-b proc raspberrypi,5-model-b brcm,bcm2712
+for board in pi4-model-b pi400 pi5-model-b; do
+  expect "$board" aarch64 raspberrypi "the $board device tree is a Raspberry Pi"
+done
+# The board vendor names a Pi, never the SoC token after it.
+write_tree brcm-only proc vendor,board brcm,bcm2711
+expect brcm-only aarch64 generic-aarch64 "a Broadcom SoC without the Raspberry Pi vendor is generic aarch64"
+pass "real Raspberry Pi device trees are recognised"
+
 write_tree qemu-virt proc linux,dummy-virt
-write_tree raspberry-pi proc raspberrypi,5-model-b brcm,bcm2712
 mkdir -p "$test_tmp/cases/acpi/proc" "$test_tmp/cases/acpi/sys"
 expect qemu-virt aarch64 generic-aarch64 "a QEMU virt board is generic aarch64"
-expect raspberry-pi aarch64 generic-aarch64 "a Raspberry Pi is generic aarch64"
 expect acpi aarch64 generic-aarch64 "an aarch64 machine without a device tree is generic aarch64"
 expect acpi x86_64 generic "an x86 machine without a device tree is generic"
 pass "unknown aarch64 and x86 machines are generic"
 
 # Only a token's vendor prefix identifies the board; the old detector matched
 # "apple," anywhere in the file.
-write_tree substring proc pineapple,board acmeqcom,soc vendor,apple,x vendor,qcom,y
+write_tree substring proc pineapple,board acmeqcom,soc myraspberrypi,x vendor,apple,x vendor,qcom,y vendor,raspberrypi,z
 expect substring aarch64 generic-aarch64 "vendor names inside other tokens do not identify the board"
 pass "only a token's vendor prefix identifies the board"
 
@@ -163,6 +174,8 @@ pass "sysfs is the fallback for the device tree"
 
 write_tree both-vendors proc apple,j314s qcom,x1e80100
 expect_contradiction both-vendors aarch64 "a device tree naming Apple and Qualcomm fails"
+write_tree pi-and-qcom proc raspberrypi,5-model-b qcom,x1e80100
+expect_contradiction pi-and-qcom aarch64 "a device tree naming a Raspberry Pi and Qualcomm fails"
 write_tree sources-disagree proc apple,j314s apple,t6000 apple,arm-platform
 write_tree sources-disagree sys lenovo,yoga-slim7x qcom,x1e80100
 expect_contradiction sources-disagree aarch64 "proc and sysfs naming different vendors fails"
@@ -171,6 +184,7 @@ write_tree vendor-vs-none sys linux,dummy-virt
 expect_contradiction vendor-vs-none aarch64 "proc naming Apple while sysfs names nobody fails"
 expect_contradiction m1-pro x86_64 "an Apple device tree on an x86 CPU fails"
 expect_contradiction yoga-slim7x x86_64 "a Qualcomm device tree on an x86 CPU fails"
+expect_contradiction pi4-model-b x86_64 "a Raspberry Pi device tree on an x86 CPU fails"
 if TEST_ARCH=x86_64 OMARCHY_PROC_ROOT="$test_tmp/cases/m1-pro/proc" PATH="$stub_bin:$ROOT/bin:$PATH" \
   "$ROOT/bin/omarchy-hw-apple-silicon" 2>/dev/null; then
   fail "the Apple predicate fails closed on contradictory identity"

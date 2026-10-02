@@ -9,7 +9,7 @@ require_platform_fixtures "the composed mkinitcpio HOOKS"
 test_tmp=$(mktemp -d)
 trap 'rm -rf "$test_tmp"' EXIT
 
-for platform in apple-silicon qualcomm generic-aarch64 generic; do
+for platform in apple-silicon qualcomm raspberrypi generic-aarch64 generic; do
   fake_platform "$test_tmp/platforms/$platform" "$platform"
 done
 # omarchy-settings without the runtime package: no detector on PATH.
@@ -245,7 +245,7 @@ assert_composed "a Surface is unchanged" generic \
 
 # Snapdragon and other aarch64 machines build the same image as x86, whatever
 # systemd line their mkinitcpio.conf starts from.
-for platform in qualcomm generic-aarch64; do
+for platform in qualcomm raspberrypi generic-aarch64; do
   new_etc
   drop_in omarchy_resume.conf <<<"HOOKS+=(resume)"
   drop_in 99-omarchy-provisioning-key.conf <<<"FILES+=(/etc/omarchy/provisioning.key)"

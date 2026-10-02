@@ -8,7 +8,7 @@
 #
 #   /var/lib/omarchy/image/target
 #     format=1
-#     platform=apple-silicon|qualcomm|generic-aarch64|generic
+#     platform=apple-silicon|qualcomm|raspberrypi|generic-aarch64|generic
 #
 # While it exists, omarchy-apply-hardware queues each hardware leaf in
 # /var/lib/omarchy/image/deferred-steps instead of running it, and arms
@@ -95,7 +95,7 @@ omarchy_image_read_manifest() {
     return 1
   fi
   case $platform in
-    apple-silicon | qualcomm | generic-aarch64 | generic) ;;
+    apple-silicon | qualcomm | raspberrypi | generic-aarch64 | generic) ;;
     *)
       echo "Error: $omarchy_image_manifest names no known platform: ${platform:-none}" >&2
       return 1
