@@ -49,6 +49,9 @@ omarchy_image_init() {
   omarchy_image_boot_rebuild=$omarchy_image_dir/boot-rebuild
   omarchy_image_keyring_request=$omarchy_image_dir/pacman-keyring
   omarchy_image_unit=omarchy-provision-hardware.service
+  # Set for the rest of the boot that retired the manifest: that boot is the
+  # image's install, so first-boot setup ends with the install's finish screen.
+  omarchy_image_first_boot_flag=$omarchy_image_root/run/omarchy-image-first-boot
   omarchy_image_systemd_dir=$omarchy_image_root/etc/systemd/system
 }
 

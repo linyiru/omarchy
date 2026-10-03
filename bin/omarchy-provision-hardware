@@ -55,6 +55,7 @@ work_present || exit 0
 if omarchy_image_manifest_present; then
   omarchy_image_read_manifest || exit 1
   mv -f "$omarchy_image_manifest" "$omarchy_image_manifest.booted" || fail "could not retire $omarchy_image_manifest"
+  : >"$omarchy_image_first_boot_flag" 2>/dev/null || true
   live_platform=$(omarchy-hw-platform) || live_platform=unknown
   echo "First boot of an image built for $omarchy_image_platform, on $live_platform hardware"
 fi

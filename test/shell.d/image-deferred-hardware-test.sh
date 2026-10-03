@@ -87,7 +87,7 @@ export RUNS="$test_tmp/runs" FAIL_B="$test_tmp/fail-b" REQUEST_REBUILD="$test_tm
 new_root() {
   local root="$test_tmp/root-$1"
   rm -rf "$root"
-  mkdir -p "$root/var/log"
+  mkdir -p "$root/var/log" "$root/run"
   printf '%s\n' "$root"
 }
 
@@ -242,6 +242,8 @@ output=$(first_boot "$root") || fail "the first boot finishes the deferred hardw
   fail "the first boot reports the image target and the live platform" "$output"
 [[ ! -e $root/var/lib/omarchy/image/target && -f $root/var/lib/omarchy/image/target.booted ]] ||
   fail "the first boot retires the build manifest"
+[[ -f $root/run/omarchy-image-first-boot ]] ||
+  fail "the first boot marks itself the image's install for first-boot setup"
 [[ ! -e $root/var/lib/omarchy/image/deferred-steps ]] || fail "the first boot empties the queue"
 [[ ! -L $root/etc/systemd/system/multi-user.target.wants/$unit_name && -f $root/etc/systemd/system/$unit_name ]] ||
   fail "the first boot disables its service and keeps the unit, so a start job already queued is skipped rather than failed"
