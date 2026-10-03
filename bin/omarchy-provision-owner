@@ -177,6 +177,8 @@ DARK="${CSI}90m"
 
 STATE_FILE=/run/omarchy-provision-owner.state
 FINALIZE_WARNING_FLAG=/run/omarchy-provision-owner.finalize-warning
+IMAGE_FIRST_BOOT_FLAG=/run/omarchy-image-first-boot
+SETUP_READY_AT=${SETUP_READY_AT:-0}
 # Rows the setup screen occupies: logo, blank, title, blank, bar, blank, tip.
 SETUP_HEIGHT=$((LOGO_HEIGHT + 6))
 SETUP_TOP_ROW=1
@@ -1264,9 +1266,37 @@ run_setup() {
   # Deferred first boot hands straight off to the display manager: SDDM starts
   # the moment this oneshot exits (Before=display-manager.service) and autologs
   # in on encrypted installs. No timed celebration screen and no "start" button
-  # here — that send-off belongs to a direct install, not first-boot setup. The
-  # finished progress bar is the last frame; clearing it for a "Starting
-  # Omarchy..." card would only add a flash of screen before the handoff.
+  # after an ISO install — that send-off belongs to the installer, which already
+  # showed it. The finished progress bar is the last frame; clearing it for a
+  # "Starting Omarchy..." card would only add a flash of screen before the
+  # handoff. An image has no installer, so its first boot shows the finish.
+  if [[ -e $IMAGE_FIRST_BOOT_FLAG ]]; then
+    set_now
+    image_install_finish $((SETUP_READY_AT + NOW - SETUP_T0)) $((NOW - SETUP_T0))
+  fi
+}
+
+# An image's first boot is its install, so it ends the way an ISO install does:
+# "Installed Omarchy in …" over the logo, until the owner starts the desktop.
+# The time is the machine's own: from the kernel to the setup screen, and from
+# the owner's confirmation to here, without the time spent answering the form.
+# The firmware's time before the kernel can't be seen from here.
+image_install_finish() {
+  local secs=$1 finishing=$2 duration pad
+  duration="$((secs / 60))m $((secs % 60))s"
+  log_step "installed Omarchy in $duration (${SETUP_READY_AT}s to the setup screen, ${finishing}s finishing setup)"
+
+  measure_setup_layout
+  printf '%s%s%d;1H' "$CLEAR" "$CSI" "$SETUP_TOP_ROW"
+  render_logo
+  blank_line
+  center "Installed Omarchy in $duration" "$LOGO_WIDTH"
+
+  # The button is 21 columns wide: "Start Omarchy" and gum's padding.
+  pad=$((($(term_cols) - 21) / 2))
+  (( pad < 0 )) && pad=0
+  gum confirm --padding "0 0 0 $pad" --show-help=false --default \
+    --affirmative "Start Omarchy" --negative "" "" || true
 }
 
 # A failed first-boot setup must not strand the machine at a user-less login
@@ -1279,6 +1309,11 @@ if [[ ${1:-} == "--attempt" ]]; then
 fi
 
 main() {
+  # How long the machine took to reach the setup screen, for an image's finish
+  # screen. Each setup attempt runs as its own process, so it inherits this.
+  set_now
+  export SETUP_READY_AT=$NOW
+
   # Font sizing waits for the console to settle, so it lives inside
   # greeter_screen (which owns that settle) rather than running here on a VT
   # that may still be in a transitional mode this early in first boot.

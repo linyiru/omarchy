@@ -233,6 +233,7 @@ setup_functions() {
   source "$TMP/provision.sh"
   STATE_FILE=$TMP/state
   FINALIZE_WARNING_FLAG=$TMP/finalize-warning
+  IMAGE_FIRST_BOOT_FLAG=$TMP/image-first-boot
   username=owner hostname="" timezone=""
   create_user() { :; }
   install_authorized_keys() { :; }
