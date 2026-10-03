@@ -45,7 +45,7 @@ swap() {
 
 for channel in stable rc edge; do
   omarchy_pacman_channel_qualified "$channel" generic || fail "x86 keeps every channel ($channel)"
-  for platform in qualcomm generic-aarch64 apple-silicon; do
+  for platform in qualcomm raspberrypi generic-aarch64 apple-silicon; do
     [[ $channel == "edge" && $platform != "apple-silicon" ]] && continue
     if omarchy_pacman_channel_qualified "$channel" "$platform" 2>"$work/err"; then
       fail "$platform refuses $channel, which has no qualified packages for it"
@@ -181,7 +181,7 @@ for channel in stable rc edge; do
 done
 pass "x86 finalization writes the channel's template, as before"
 
-for platform in qualcomm generic-aarch64; do
+for platform in qualcomm raspberrypi generic-aarch64; do
   for channel in stable rc; do
     output=$(omarchy_pacman_write_template "$channel" "$platform" "$etc/pacman.conf" "$etc/mirrorlist") || fail "$platform finalization on $channel"
     [[ $output == "Omarchy $channel is not qualified for $platform yet, so this machine gets no Omarchy repository; omarchy-channel-set edge adds one." ]] ||
@@ -304,7 +304,7 @@ notice() {
   TEST_PLATFORM=$1 PATH="$work/platform-bin:$PATH" omarchy_pacman_missing_repository_notice "${@:2}"
 }
 expected="This machine has no Omarchy repository, so its Omarchy packages get no updates. Switch to edge with: omarchy-channel-set edge"
-for platform in qualcomm generic-aarch64; do
+for platform in qualcomm raspberrypi generic-aarch64; do
   [[ $(notice "$platform" "$work/no-omarchy.conf") == "$expected" ]] || fail "$platform without an Omarchy repository is told how to get one"
   [[ $(notice other "$work/no-omarchy.conf" "$platform") == "$expected" ]] || fail "$platform: a caller that knows the platform passes it"
   [[ -z $(notice "$platform" "$work/omarchy.conf") ]] || fail "$platform with an Omarchy repository hears nothing"
@@ -371,7 +371,7 @@ events() {
   grep -vE '^sudo (-h|-k)$' "$SUDO_TEST_LOG" || true
 }
 
-for platform in apple-silicon qualcomm generic-aarch64; do
+for platform in apple-silicon qualcomm raspberrypi generic-aarch64; do
   for channel in stable rc edge; do
     [[ $channel == "edge" && $platform != "apple-silicon" ]] && continue
     reset_boundary

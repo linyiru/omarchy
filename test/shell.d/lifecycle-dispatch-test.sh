@@ -11,7 +11,7 @@ trap 'rm -rf "$tmp"' EXIT
 operations=(provision-prepare provision-commit provision-verify reset-prepare reset-verify reset-commit reset-rollback update-verify update-takeover luks-slots migrate setup-boot)
 apple_optional=(migrate)
 
-for platform in apple-silicon qualcomm generic-aarch64 generic; do
+for platform in apple-silicon qualcomm raspberrypi generic-aarch64 generic; do
   fake_platform "$tmp/$platform" "$platform"
 done
 mkdir -p "$tmp/contradiction/proc/device-tree"
@@ -128,6 +128,33 @@ for operation in "${operations[@]}"; do
     fail "apple: an omarchy-mac-boot without $operation is named with its version" "status $status: $output"
 done
 pass "apple: an installed omarchy-mac-boot that lacks a required operation fails asking for its update"
+
+# A Raspberry Pi has no generic boot path either: its operations run from
+# omarchy-rpi-boot's directory, never the Mac's, and without that package its
+# required ones fail naming it. luks-slots and migrate are optional there.
+rpi_implementation=usr/lib/omarchy/rpi-boot
+rpi_optional=(luks-slots migrate)
+rpi_full=$tmp/rpi-full
+implementation=$rpi_implementation install_implementation "$rpi_full"
+for operation in "${operations[@]}"; do
+  rm -f "$tmp/ran"
+  on raspberrypi "$rpi_full" "$operation" first || fail "raspberrypi: $operation runs its entrypoint"
+  [[ $(cat "$tmp/ran") == "$operation first" ]] || fail "raspberrypi: $operation passes its arguments" "$(cat "$tmp/ran")"
+  resolved=$(on raspberrypi "$rpi_full" --resolve "$operation") && [[ $resolved == "$rpi_full/$rpi_implementation/$operation" ]] ||
+    fail "raspberrypi: $operation resolves to omarchy-rpi-boot's entrypoint" "$resolved"
+
+  rm -f "$tmp/ran"
+  status=0
+  output=$(on raspberrypi "$full" "$operation" 2>&1) || status=$?
+  [[ ! -e $tmp/ran ]] || fail "raspberrypi: $operation never runs a Mac entrypoint"
+  if [[ " ${rpi_optional[*]} " == *" $operation "* ]]; then
+    (( status == 0 )) && [[ -z $output ]] || fail "raspberrypi: optional $operation is a no-op without the boot package" "$output"
+  else
+    (( status == 3 )) && [[ $output == "Error: $operation on raspberrypi needs omarchy-rpi-boot, which provides /usr/lib/omarchy/rpi-boot/$operation; it is not installed" ]] ||
+      fail "raspberrypi: required $operation names the missing package" "status $status: $output"
+  fi
+done
+pass "raspberrypi: operations run omarchy-rpi-boot's entrypoints, and without it required ones fail naming it"
 
 # An entrypoint anyone but root could have changed never runs, optional or not.
 untrusted() {
@@ -280,6 +307,18 @@ for operation in "${setup_operations[@]}"; do
 done
 pass "apple: setup and the app-install hooks resolve in omarchy-mac's directory, and are no-ops without omarchy-mac"
 
+with_rpi=$tmp/with-rpi
+rm -rf "$with_rpi"
+install_setup "$with_rpi" usr/lib/omarchy/rpi
+for operation in "${setup_operations[@]}"; do
+  resolved=$(on raspberrypi "$with_rpi" --resolve "$operation") && [[ $resolved == "$with_rpi/usr/lib/omarchy/rpi/$operation" ]] ||
+    fail "raspberrypi: $operation resolves to omarchy-rpi's entrypoint" "$resolved"
+  rm -f "$tmp/ran"
+  output=$(on raspberrypi "$with_mac" "$operation" 2>&1) && [[ -z $output && ! -e $tmp/ran ]] ||
+    fail "raspberrypi: $operation is a no-op without omarchy-rpi, even with omarchy-mac's on disk" "$output"
+done
+pass "raspberrypi: setup and the app-install hooks resolve in omarchy-rpi's directory, and are no-ops without omarchy-rpi"
+
 session=(CALLER_SECRET=leak HOME=/home/owner USER=owner XDG_RUNTIME_DIR=/run/user/1000 XDG_CONFIG_HOME=/home/owner/.cfg
   XDG_STATE_HOME=/home/owner/.st XDG_DATA_HOME=/home/owner/.data DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus OMARCHY_PATH=/usr/share/omarchy)
 rm -f "$tmp/ran"
@@ -319,7 +358,7 @@ pass "apple: a setup entrypoint that fails the trust rules never runs"
 # installer run with sudo still finishes elsewhere. As root the dispatcher runs
 # the detector beside it, so each platform gets a copy beside a stub.
 if unshare --user --map-root-user true 2>/dev/null; then
-  for platform in apple-silicon generic qualcomm generic-aarch64; do
+  for platform in apple-silicon generic qualcomm raspberrypi generic-aarch64; do
     mkdir -p "$tmp/root-$platform"
     cp "$dispatch" "$tmp/root-$platform/"
     printf '#!/bin/bash\necho %s\n' "$platform" >"$tmp/root-$platform/omarchy-hw-platform"
@@ -331,16 +370,16 @@ if unshare --user --map-root-user true 2>/dev/null; then
         output=$(OMARCHY_LIFECYCLE_ROOT="$with_mac" unshare --user --map-root-user \
           "$tmp/root-$platform/omarchy-lifecycle-dispatch" $arguments 2>&1) || status=$?
         [[ ! -e $tmp/ran ]] || fail "$platform: root never runs '$arguments'"
-        if [[ $platform == "apple-silicon" ]]; then
+        if [[ $platform == "apple-silicon" || $platform == "raspberrypi" ]]; then
           (( status == 1 )) && [[ $output == "Error: $operation runs as the user, never as root" ]] ||
-            fail "apple: root is refused '$arguments'" "status $status: $output"
+            fail "$platform: root is refused '$arguments'" "status $status: $output"
         else
           (( status == 0 )) && [[ -z $output ]] || fail "$platform: '$arguments' is a no-op for root" "status $status: $output"
         fi
       done
     done
   done
-  pass "setup-user, post-install and pre-remove refuse root on Apple Silicon, and are no-ops for root elsewhere"
+  pass "setup-user, post-install and pre-remove refuse root on Apple Silicon and Raspberry Pi, and are no-ops for root elsewhere"
 else
   skip "no unprivileged user namespace; skipping the root refusal of the user operations"
 fi

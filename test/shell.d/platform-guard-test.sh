@@ -91,7 +91,7 @@ make_db "$db/sync/asahi-alarm.db" uboot-asahi m1n1
 # Each fixture machine is booted: systemd runs as PID 1 from a root with no
 # image manifest.
 mkdir -p "$test_tmp/no-image/run/systemd/system"
-for platform in apple-silicon qualcomm generic-aarch64 generic; do
+for platform in apple-silicon qualcomm raspberrypi generic-aarch64 generic; do
   fake_platform "$test_tmp/$platform" "$platform"
   mkdir -p "$test_tmp/$platform/proc/1"
   ln -s "$test_tmp/no-image" "$test_tmp/$platform/proc/1/root"
@@ -167,7 +167,7 @@ GUARD_DB="$test_tmp/probe" refuses "the probe package is refused through the fix
 [[ $(env "${decoy_env[@]}" "$guard" --platform) == "$decoy" ]] || fail "the decoy platform is reported through the fixture"
 pass "without root the guard answers from its fixtures"
 
-for platform in apple-silicon qualcomm generic-aarch64 generic; do
+for platform in apple-silicon qualcomm raspberrypi generic-aarch64 generic; do
   allows "untagged packages install on $platform" "$platform" firefox aquamarine hyprland omarchy-meta
   allows "an empty transaction passes on $platform" "$platform"
 
@@ -369,7 +369,7 @@ run_leaf() {
 }
 
 mkdir -p "$alpm"
-for platform in apple-silicon qualcomm; do
+for platform in apple-silicon qualcomm raspberrypi; do
   if run_leaf "$platform"; then
     fail "hardware setup on $platform refuses to start without the platform guard"
   fi

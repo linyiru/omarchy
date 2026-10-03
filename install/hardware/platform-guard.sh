@@ -1,5 +1,5 @@
 # Hardware setup installs platform packages from here on, so on a machine that
-# has any (Apple Silicon, Qualcomm) it starts only once omarchy-settings' pacman
+# has any (Apple Silicon, Qualcomm, Raspberry Pi) it starts only once omarchy-settings' pacman
 # platform guard is resident: a hook that arrives in the same transaction as a
 # package does not check it. Packages an installer placed before this step are
 # checked here too. See docs/platform-guard.md.
@@ -23,7 +23,7 @@ if [[ ! -f $alpm_root/usr/share/libalpm/hooks/$hook || ! -x $guard ]]; then
     return 1
   fi
   [[ $platform != "generic" ]] || return 0
-  if [[ $platform == "apple-silicon" || $platform == "qualcomm" ]]; then
+  if [[ $platform == "apple-silicon" || $platform == "qualcomm" || $platform == "raspberrypi" ]]; then
     echo "Error: the pacman platform guard from omarchy-settings is not installed; install omarchy-settings in a transaction before hardware setup" >&2
     return 1
   fi

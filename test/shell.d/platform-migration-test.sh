@@ -76,7 +76,7 @@ pass "an undetermined platform defers the migration (75), so omarchy-migrate and
 # the migration runs without the marker, so a rerun is the entrypoint's own
 # idempotent resume.
 require_platform_fixtures "the platform migration through lifecycle dispatch"
-for platform in apple-silicon qualcomm generic-aarch64 generic; do
+for platform in apple-silicon qualcomm raspberrypi generic-aarch64 generic; do
   fake_platform "$tmp/$platform" "$platform"
 done
 mkdir -p "$tmp/sudo-bin" "$tmp/lifecycle/usr/lib/omarchy/mac-boot" "$tmp/none"
@@ -92,7 +92,7 @@ migrate_on() {
     PATH="$tmp/$platform/bin:$tmp/sudo-bin:$ROOT/bin:$PATH" OMARCHY_PATH=$ROOT bash -euo pipefail "$migration"
 }
 
-for platform in generic generic-aarch64 qualcomm; do
+for platform in generic raspberrypi generic-aarch64 qualcomm; do
   migrate_on "$platform" "$tmp/lifecycle" >/dev/null || fail "$platform: the migration completes"
   [[ ! -e $tmp/ran && ! -e $marker ]] || fail "$platform: nothing runs" "$(cat "$tmp/ran")"
 done
