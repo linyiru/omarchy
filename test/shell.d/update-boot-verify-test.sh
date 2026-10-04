@@ -21,7 +21,7 @@ export OMARCHY_UPDATE_LOGGED=1
 
 tmp=$boundary_tmp/boot
 mkdir -p "$tmp"
-for platform in apple-silicon qualcomm generic-aarch64 generic; do
+for platform in apple-silicon qualcomm raspberrypi generic-aarch64 generic; do
   fake_platform "$tmp/$platform" "$platform"
 done
 

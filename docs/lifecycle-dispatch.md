@@ -13,12 +13,12 @@ The first form runs the operation. `--resolve` prints the entrypoint the operati
 
 | Situation | Run | `--resolve` |
 | --- | --- | --- |
-| The platform registers no package (`generic`, `generic-aarch64`, and `qualcomm` today) | no-op, exit 0 | prints nothing, exit 0 |
+| The platform registers no package (`generic`, `generic-aarch64` and `qualcomm` today) | no-op, exit 0 | prints nothing, exit 0 |
 | The entrypoint exists and passes the trust rules | execs it; its exit status is the result | prints its path |
 | A required operation has no entrypoint, and the package is not installed | exit 3 (an entrypoint's own status could also be 3; with `--resolve` it is only this): `Error: <operation> on <platform> needs <package>, which provides <path>; it is not installed` | same error |
 | A required operation has no entrypoint, but the package is installed (its pacman record says so) | exit 1: `Error: <operation> on <platform> needs <path>, which <package> <version> does not provide; update <package>` | same error |
 | An optional operation has no entrypoint (every setup and app-install operation is optional, so none of them ever fails for a missing package) | no-op, exit 0 | prints nothing, exit 0 |
-| A user operation (`setup-user`, `post-install`, `pre-remove`) is run as root on a platform that registers it (Apple Silicon), its entrypoint installed or not | exit 1: `Error: <operation> runs as the user, never as root` | same error |
+| A user operation (`setup-user`, `post-install`, `pre-remove`) is run as root on a platform that registers it (Apple Silicon, Raspberry Pi), its entrypoint installed or not | exit 1: `Error: <operation> runs as the user, never as root` | same error |
 | The entrypoint fails the trust rules | exit 1: `Error: refusing <path>: ...` (optional operations too) | same error |
 | `omarchy-hw-platform` can't settle the platform | exit 1 | exit 1 |
 | No operation, or one outside the fixed set | exit 2 with usage | exit 2 |
@@ -55,11 +55,15 @@ Registration is code in `bin/omarchy-lifecycle-dispatch`, not configuration. No 
 | --- | --- | --- | --- |
 | `apple-silicon` | `/usr/lib/omarchy/mac-boot` | `omarchy-mac-boot` | all its operations |
 | `apple-silicon`: `setup-system`, `setup-user`, `post-install`, `pre-remove` | `/usr/lib/omarchy/mac` | `omarchy-mac` | none |
+| `raspberrypi` | `/usr/lib/omarchy/rpi-boot` | `omarchy-rpi-boot` | all its operations except `luks-slots` and `migrate` |
+| `raspberrypi`: `setup-system`, `setup-user`, `post-install`, `pre-remove` | `/usr/lib/omarchy/rpi` | `omarchy-rpi` | none |
 | `generic`, `generic-aarch64`, `qualcomm` | none | none | none: every operation is a no-op, and callers keep their generic path |
 
 The entrypoint for an operation is `<implementation directory>/<operation>`. A registered platform's required operations must be shipped. Its optional operations may be left out, and then they are no-ops.
 
 On a Mac, owner provisioning and factory reset have no other path, so their operations are required: a Mac without `omarchy-mac-boot`'s entrypoints stops before the owner form or before the reset is confirmed, with the dispatcher's error naming the package, where the generic Limine path would leave the boot-partition key behind or rebuild a UKI the Mac does not boot. `luks-slots` is required because the Mac's boot checks prove the disk's key slots. `update-verify` is required because nothing else checks what an update left in a Mac's boot chain. `update-takeover` is required because a Mac's boot chain and image write files no package owns, so a Mac whose boot package can't vouch for a takeover keeps its files and the update stops at the conflict. `setup-boot` is required because the Mac's boot setup has no other path in hardware setup: a Mac whose `omarchy-mac-boot` lacks it stops the hardware leaf, asking for the update, where an optional operation would skip the Limine activation. System and user setup and the app-install hooks belong to the Mac's runtime package, `omarchy-mac`, not its boot package, and are optional: a Mac without `omarchy-mac` gets Omarchy's generic setup and installs.
+
+A Raspberry Pi's firmware boots `config.txt`, the kernel and the initramfs from the FAT boot partition, with the kernel command line in `cmdline.txt`; there is no Limine or UKI for the generic path to rebuild. So its provisioning, factory reset, `update-verify`, `update-takeover` and `setup-boot` operations are required, as on a Mac, and belong to `omarchy-rpi-boot`. `luks-slots` stays optional until the Pi's boot checks prove an encrypted root's slots, and `migrate` is optional. Its setup and app-install hooks belong to `omarchy-rpi` and are optional.
 
 ## Trust rules
 

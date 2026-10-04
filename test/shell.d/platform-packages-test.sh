@@ -18,7 +18,7 @@ names() {
 base=$(names "$ROOT/install/omarchy-base.packages")
 aarch64=$(names "$ROOT/install/omarchy-aarch64.packages")
 
-for platform in apple-silicon qualcomm generic-aarch64 generic; do
+for platform in apple-silicon qualcomm raspberrypi generic-aarch64 generic; do
   fake_platform "$work/$platform" "$platform"
   defaults=$(OMARCHY_PROC_ROOT="$work/$platform/proc" PATH="$work/$platform/bin:$ROOT/bin:$PATH" omarchy-pkg-defaults)
   [[ $defaults == "$(omarchy-pkg-defaults "$platform")" ]] ||
@@ -47,6 +47,11 @@ for platform in apple-silicon qualcomm generic-aarch64 generic; do
   else
     ! grep -Fxq linux-firmware-qcom "$work/$platform.packages" || fail "$platform: no Qualcomm firmware"
   fi
+  if [[ $platform == "raspberrypi" ]]; then
+    grep -Fxq firmware-raspberrypi "$work/$platform.packages" || fail "Raspberry Pi adds its radio firmware"
+  else
+    ! grep -Fxq firmware-raspberrypi "$work/$platform.packages" || fail "$platform: no Raspberry Pi firmware"
+  fi
   # The Mac's packages, and wf-recorder, which records its screen: nothing else
   # captures on Apple Silicon.
   for package in omarchy-mac omarchy-mac-boot wf-recorder; do
@@ -65,7 +70,7 @@ tree="$work/tree"
 mkdir -p "$tree/install"
 cp "$ROOT"/install/omarchy-*.packages "$tree/install/"
 printf '# test addition\nexample-board-support\nzram-generator\n' >"$tree/install/omarchy-generic-aarch64.packages"
-for platform in apple-silicon qualcomm generic-aarch64 generic; do
+for platform in apple-silicon qualcomm raspberrypi generic-aarch64 generic; do
   defaults=$(OMARCHY_PATH="$tree" omarchy-pkg-defaults "$platform")
   if [[ $platform == "generic-aarch64" ]]; then
     [[ $(tail -n 1 <<<"$defaults") == "example-board-support" ]] || fail "a platform list is added after the others" "$defaults"

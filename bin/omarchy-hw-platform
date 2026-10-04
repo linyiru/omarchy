@@ -1,11 +1,13 @@
 #!/bin/bash -p
 
-# omarchy:summary=Print the hardware platform: apple-silicon, qualcomm, generic-aarch64 or generic.
+# omarchy:summary=Print the hardware platform: apple-silicon, qualcomm, raspberrypi, generic-aarch64 or generic.
 
 # ARM laptops have no DMI, so the board identity is the root node of the device
 # tree the firmware hands the kernel: "apple,<model>" from Asahi's m1n1 on every
-# Apple Silicon Mac, "qcom,<soc>" on Snapdragon laptops. Each compatible string
-# is a NUL-separated list, and only a token's vendor prefix counts.
+# Apple Silicon Mac, "qcom,<soc>" on Snapdragon laptops, "raspberrypi,<model>"
+# on every Raspberry Pi the firmware boots (Pi 4, 400, 5, 500 and the compute
+# modules alike). Each compatible string is a NUL-separated list, and only a
+# token's vendor prefix counts.
 #
 # An image is built away from the machine it will run on, so while this root is
 # being built rather than booted, the image-target manifest the builder wrote
@@ -92,7 +94,7 @@ trusted() {
   [[ $owner =~ ^[0-9]+$ && $mode =~ ^[0-7]+$ ]] && (( owner == image_owner && (8#$mode & 8#022) == 0 ))
 }
 
-# The manifest: format=1, platform= one of the four names, comments and unknown
+# The manifest: format=1, platform= one of the five names, comments and unknown
 # keys ignored, and any other line refused. The detector reads it itself, so it
 # stands alone wherever a package ships a copy of it.
 image_platform() {
@@ -121,7 +123,7 @@ image_platform() {
     echo "Error: the image manifest $manifest is not format=1" >&2
     return 1
   fi
-  if [[ ! $platform =~ ^(apple-silicon|qualcomm|generic-aarch64|generic)$ ]]; then
+  if [[ ! $platform =~ ^(apple-silicon|qualcomm|raspberrypi|generic-aarch64|generic)$ ]]; then
     echo "Error: the image manifest $manifest names no known platform: ${platform:-none}" >&2
     return 1
   fi
@@ -147,18 +149,22 @@ for source in "${sources[@]}"; do
 
   apple=0
   qcom=0
+  rpi=0
   mapfile -d '' -t tokens <"$source"
   for token in "${tokens[@]}"; do
     [[ $token == "apple,"* ]] && apple=1
     [[ $token == "qcom,"* ]] && qcom=1
+    [[ $token == "raspberrypi,"* ]] && rpi=1
   done
 
-  if (( apple && qcom )); then
-    contradiction "$source names both Apple and Qualcomm hardware"
+  if (( apple + qcom + rpi > 1 )); then
+    contradiction "$source names more than one of Apple, Qualcomm and Raspberry Pi hardware"
   elif (( apple )); then
     found=apple
   elif (( qcom )); then
     found=qcom
+  elif (( rpi )); then
+    found=raspberrypi
   else
     found=none
   fi
@@ -171,13 +177,13 @@ for source in "${sources[@]}"; do
 done
 
 case $vendor in
-  apple | qcom)
+  apple | qcom | raspberrypi)
     [[ $machine == "aarch64" ]] || contradiction "$vendor_source names $vendor hardware but the CPU is $machine"
-    if [[ $vendor == "apple" ]]; then
-      echo apple-silicon
-    else
-      echo qualcomm
-    fi
+    case $vendor in
+      apple) echo apple-silicon ;;
+      qcom) echo qualcomm ;;
+      raspberrypi) echo raspberrypi ;;
+    esac
     ;;
   *)
     if [[ $machine == "aarch64" ]]; then

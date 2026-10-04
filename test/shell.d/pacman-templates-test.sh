@@ -15,7 +15,7 @@ trap 'rm -rf "$work"' EXIT
 export OMARCHY_PATH="$ROOT"
 source "$ROOT/install/helpers/pacman.sh"
 
-platforms="generic qualcomm generic-aarch64 apple-silicon"
+platforms="generic qualcomm raspberrypi generic-aarch64 apple-silicon"
 # aarch64 has edge alone: stable and rc there would install the release line,
 # which has no aarch64 support.
 channels_for() {
@@ -26,13 +26,14 @@ channels_for() {
 
 [[ $(omarchy_pacman_templates generic) == "$ROOT/default/pacman" ]] || fail "x86 keeps its templates where they were"
 [[ $(omarchy_pacman_templates qualcomm) == "$ROOT/default/pacman/aarch64" ]] || fail "Snapdragon uses the aarch64 templates"
+[[ $(omarchy_pacman_templates raspberrypi) == "$ROOT/default/pacman/aarch64" ]] || fail "a Raspberry Pi uses the aarch64 templates"
 [[ $(omarchy_pacman_templates generic-aarch64) == "$ROOT/default/pacman/aarch64" ]] || fail "generic aarch64 uses the aarch64 templates"
 [[ $(omarchy_pacman_templates apple-silicon) == "$ROOT/default/pacman/apple-silicon" ]] || fail "Apple Silicon uses its own templates"
 ! omarchy_pacman_templates riscv 2>/dev/null || fail "an unknown platform has no templates"
 pass "each platform's templates sit in a directory of their own, x86_64's where they always were"
 
 [[ $(omarchy_pacman_default_channel generic) == stable ]] || fail "x86 defaults to stable"
-for platform in qualcomm generic-aarch64 apple-silicon; do
+for platform in qualcomm raspberrypi generic-aarch64 apple-silicon; do
   [[ $(omarchy_pacman_default_channel "$platform") == edge ]] || fail "$platform defaults to edge"
 done
 ! omarchy_pacman_default_channel riscv 2>/dev/null || fail "an unknown platform has no default channel"
@@ -58,7 +59,7 @@ for platform in $platforms; do
     list=$(repos "$templates" "$channel") || fail "$platform $channel: pacman reads the template"
     case $platform in
       generic) expected="core extra multilib omarchy " ;;
-      qualcomm | generic-aarch64) expected="core extra alarm aur omarchy " ;;
+      qualcomm | raspberrypi | generic-aarch64) expected="core extra alarm aur omarchy " ;;
       apple-silicon) expected="omarchy asahi-alarm core extra alarm aur " ;;
     esac
     [[ $list == "$expected" ]] || fail "$platform $channel: repositories in order" "$list"
@@ -123,7 +124,7 @@ events() {
 for platform in $platforms; do
   case $platform in
     generic) templates=$SUDO_TEST_ROOT/default/pacman ;;
-    qualcomm | generic-aarch64) templates=$SUDO_TEST_ROOT/default/pacman/aarch64 ;;
+    qualcomm | raspberrypi | generic-aarch64) templates=$SUDO_TEST_ROOT/default/pacman/aarch64 ;;
     apple-silicon) templates=$SUDO_TEST_ROOT/default/pacman/apple-silicon ;;
   esac
   # No channel named refreshes to the platform's default one.

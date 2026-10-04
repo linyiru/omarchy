@@ -378,7 +378,7 @@ keyring_boot() {
     PATH="$keyring_bin:$base_path" "$ROOT/bin/omarchy-provision-hardware"
 }
 
-for platform in qualcomm generic-aarch64; do
+for platform in qualcomm raspberrypi generic-aarch64; do
   rm -f "$KEYRING"
   root=$(new_root "install-$platform")
   finalize "$root" "$platform" || fail "$platform: install finalization succeeds"
