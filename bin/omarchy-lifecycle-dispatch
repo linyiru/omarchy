@@ -5,11 +5,11 @@
 # omarchy:requires-sudo=true
 # omarchy:hidden=true
 
-# Provisioning, factory reset, update, the platform migration, boot, system and
-# user setup and app installs call a fixed set of operations here. A platform
-# that needs its own handling registers directories of root-owned entrypoints
-# below; on every other platform each operation is a no-op and the caller keeps
-# its generic path. The contract is docs/lifecycle-dispatch.md.
+# Provisioning, factory reset, update, boot, system and user setup and app
+# installs call a fixed set of operations here. A platform that needs its own
+# handling registers directories of root-owned entrypoints below; on every other
+# platform each operation is a no-op and the caller keeps its generic path. The
+# contract is docs/lifecycle-dispatch.md.
 #
 # --resolve prints the entrypoint an operation would run, or nothing when it is
 # a no-op here, so a caller can choose between a platform implementation and
@@ -96,11 +96,10 @@ fi
 # the Mac's boot setup (setup-boot), so those operations are required. So is
 # update-takeover: the Mac boot chain and its image own files no package does,
 # and a Mac whose boot package can't vouch for a takeover keeps them. Setup and
-# the app-install hooks are optional: a Mac without
-# omarchy-mac keeps Omarchy's generic setup and installs. Moving an operation to
-# required also changes apple_optional in
-# test/shell.d/lifecycle-dispatch-test.sh and the Apple column and registration
-# table in docs/lifecycle-dispatch.md.
+# the app-install hooks are optional: a Mac without omarchy-mac keeps Omarchy's
+# generic setup and installs. Moving an operation to required also changes
+# apple_optional in test/shell.d/lifecycle-dispatch-test.sh and the Apple column
+# and registration table in docs/lifecycle-dispatch.md.
 case $platform:$operation in
   apple-silicon:setup-system | apple-silicon:setup-user | apple-silicon:post-install | apple-silicon:pre-remove)
     implementation=/usr/lib/omarchy/mac
