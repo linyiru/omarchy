@@ -38,6 +38,34 @@ export PATH="$OMARCHY_PATH/bin:$PATH"
 REKEY_STATE=$PROVISIONING_DIR/luks-rekey.state
 source "$OMARCHY_PATH/install/provisioning/luks-rekey.sh"
 
+# Answers the owner gave before this boot, staged by the platform as key=value
+# lines: a Raspberry Pi's comes from the settings Raspberry Pi Imager writes to
+# the card. The form skips what they cover and shows them on its last screen,
+# where "No, change it" asks for everything again. A password arrives only as a
+# crypt(3) hash, so an encrypted install, whose disk takes the password itself,
+# asks for it anyway.
+ANSWERS_FILE=$PROVISIONING_DIR/answers
+declare -A answers=()
+
+load_answers() {
+  local key value
+  answers=()
+  [[ -f $ANSWERS_FILE ]] || return 0
+  while IFS='=' read -r key value; do
+    [[ -n $value ]] || continue
+    case $key in
+      keymap | username | hostname | timezone) answers[$key]=$value ;;
+      # Only a hash chpasswd -e can store: a bare string would lock the account.
+      password_hash)
+        if [[ $value =~ ^\$[a-z0-9]+\$[^:[:space:]]+$ ]]; then
+          answers[$key]=$value
+        fi
+        ;;
+    esac
+  done <"$ANSWERS_FILE"
+  return 0
+}
+
 # The shared setup form — the same questions, prompts, and validation the ISO
 # configurator's user step asks. The ISO vendors this very file out of the
 # runtime package it bundles, so an install and the first boot that finishes it
@@ -592,6 +620,17 @@ greeter_screen() {
 keyboard_form() {
   local status failures=0
 
+  if [[ -n ${answers[keymap]:-} ]]; then
+    if apply_keyboard "${answers[keymap]}"; then
+      keyboard=${answers[keymap]}
+      keyboard_label=$(printf '%s\n' "$OMARCHY_KEYBOARD_LAYOUTS" | awk -F'|' -v k="$keyboard" '$2==k{print $1; exit}')
+      keyboard_label=${keyboard_label:-$keyboard}
+      return 0
+    fi
+    log_step "the staged keymap ${answers[keymap]} did not take; asking for a layout"
+    unset 'answers[keymap]'
+  fi
+
   while true; do
     step "Let's setup your keyboard..."
     omarchy_prompt_keyboard && status=0 || status=$?
@@ -706,29 +745,59 @@ user_form() {
     username=$(<"$PROVISIONING_DIR/setup-user")
     say "Continuing setup for user: $username"
     echo
+  elif staged_username_valid; then
+    username=${answers[username]}
   else
     omarchy_prompt_username || return $?
   fi
 
-  omarchy_prompt_password || return $?
+  if [[ -n ${answers[password_hash]:-} ]] && ! encrypted_install; then
+    password="" password_confirmation=""
+    password_hash=${answers[password_hash]}
+  else
+    password_hash=""
+    omarchy_prompt_password || return $?
+  fi
   omarchy_prompt_identity || return $?
 
   # Hostname and timezone are deferred to first boot with the rest of the user
   # step: the deferred install seeds neutral placeholders (omarchy/UTC) and the
   # owner overwrites them here.
-  omarchy_prompt_hostname || return $?
+  if [[ ${answers[hostname]:-} =~ $OMARCHY_HOSTNAME_PATTERN ]]; then
+    hostname=${answers[hostname]}
+  else
+    omarchy_prompt_hostname || return $?
+  fi
 
-  step "Let's set your timezone..."
-  omarchy_prompt_timezone || return $?
+  if [[ -n ${answers[timezone]:-} && -f /usr/share/zoneinfo/${answers[timezone]} ]]; then
+    timezone=${answers[timezone]}
+  else
+    step "Let's set your timezone..."
+    omarchy_prompt_timezone || return $?
+  fi
+}
+
+# The checks omarchy_prompt_username makes of a typed name.
+staged_username_valid() {
+  local name=${answers[username]:-}
+  [[ -n $name && $name =~ $OMARCHY_USERNAME_PATTERN && ! $name =~ $OMARCHY_RESERVED_USERNAMES ]] &&
+    ! omarchy_username_taken "$name"
 }
 
 confirm_form() {
+  local shown_password
+  if [[ -n ${password_hash:-} ]]; then
+    shown_password="[Set before first boot]"
+  else
+    shown_password=$(printf "%${#password}s" | tr ' ' '*')
+  fi
+
   clear_logo
   echo
   echo -e "Field,Value
 Keyboard,${keyboard_label:-English (US)}
 Username,$username
-Password,$(printf "%${#password}s" | tr ' ' '*')
+Password,$shown_password
 Full name,${full_name:-[Skipped]}
 Email address,${email_address:-[Skipped]}
 Hostname,${hostname:-omarchy}
@@ -806,8 +875,13 @@ create_user() {
       ${full_name:+-c "$full_name"} "$username"
   fi
 
-  printf '%s:%s\n' "$username" "$password" | chpasswd
-  printf '%s:%s\n' root "$password" | chpasswd
+  if [[ -n ${password_hash:-} ]]; then
+    printf '%s:%s\n' "$username" "$password_hash" | chpasswd -e
+    printf '%s:%s\n' root "$password_hash" | chpasswd -e
+  else
+    printf '%s:%s\n' "$username" "$password" | chpasswd
+    printf '%s:%s\n' root "$password" | chpasswd
+  fi
 
   # deferred-provisioning installs skip archinstall's create_users, which is what normally
   # uncomments %wheel in /etc/sudoers. Always write the drop-in: detecting an
@@ -1124,7 +1198,7 @@ reset_limine_config() {
 cleanup_oem_state() {
   # Keep groups + packages: omarchy-system-factory-reset stages the bundled Node
   # tarball from these live copies when the factory snapshot predates it.
-  rm -f "$PROVISIONING_DIR/pending" "$PROVISIONING_DIR/authorized_keys" "$PROVISIONING_DIR/setup-user" "$REKEY_STATE"
+  rm -f "$PROVISIONING_DIR/pending" "$PROVISIONING_DIR/authorized_keys" "$PROVISIONING_DIR/setup-user" "$ANSWERS_FILE" "$REKEY_STATE"
 
   rm -f /etc/systemd/system/multi-user.target.wants/omarchy-provision-owner.service
   systemctl daemon-reload 2>/dev/null || true
@@ -1201,6 +1275,7 @@ run_setup() {
   local status
 
   platform_ready || return 1
+  load_answers
 
   while true; do
     keyboard_form || return 1
@@ -1211,7 +1286,10 @@ run_setup() {
       ((status == OMARCHY_FORM_SIGNAL)) && confirm_reboot && exec systemctl reboot
       continue
     fi
-    confirm_form || continue
+    if ! confirm_form; then
+      answers=()
+      continue
+    fi
     if ! rekey_accepts_password; then
       notice "Setup already set the disk password. Enter that same password." 4
       continue

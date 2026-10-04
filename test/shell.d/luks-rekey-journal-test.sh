@@ -89,7 +89,7 @@ sed -n '/^PROVISIONING_UNLOCK_FILES=(/,/^)/p; /^UNLOCK_OWNER=/p; /^limine_auto_u
 grep -q '^luks_auto_unlock_drop() {' "$tmp/unlock.sh" && grep -q '^limine_auto_unlock_drop() {' "$tmp/unlock.sh" &&
   grep -q '^luks_record_slots() {' "$tmp/unlock.sh" ||
   fail "omarchy-provision-owner defines the dispatched and Limine auto-unlock callbacks and the slot record"
-sed -n '/^rekey_luks() {/,/^}/p; /^run_provisioning() {/,/^}/p; /^cleanup_oem_state() {/,/^}/p
+sed -n '/^ANSWERS_FILE=/p; /^declare -A answers=/p; /^load_answers() {/,/^}/p; /^rekey_luks() {/,/^}/p; /^run_provisioning() {/,/^}/p; /^cleanup_oem_state() {/,/^}/p
   /^platform_ready() {/,/^}/p; /^run_setup() {/,/^}/p
   /^rekey_accepts_password() {/,/^}/p' \
   "$ROOT/bin/omarchy-provision-owner" | sed "s|/etc/|$tmp/etc/|g" >"$tmp/provision.sh"

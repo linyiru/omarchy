@@ -81,6 +81,7 @@ cat >"$tmp/form.sh" <<SH
 set -euo pipefail
 source "$tmp/keyboard.sh"
 LOG_FILE=$tmp/log
+declare -A answers=()
 OMARCHY_FORM_BACK=2
 step() { echo "prompt" >>"$tmp/screen"; }
 notice() { echo "notice: \$1" >>"$tmp/screen"; }
